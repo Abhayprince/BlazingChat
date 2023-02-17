@@ -1,18 +1,95 @@
 ﻿@page "/chat"
-@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.SignalR.Client
 
-<h3>Welcome @AuthenticationState.Name</h3>
+@implements IAsyncDisposable
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <div class="row">
+                <div class="col">
+                    <h2>BlazingChat</h2>
+                </div>
+                <div class="col">
+                    <button type="button" class="btn btn-warning float-end" @onclick="HandleLogout">Logout</button>
+                    <label class="float-end me-2 mt-2">Welcome @AuthenticationState.User.Name</label>
+                </div>
+            </div>
+        </div>
+        <div class="card-body messages-window">
+            <div class="row">
+                <div class="col-3">
+                    <UsersList Users="Users" OnUserSelected="OnUserSelected" />
+                </div>
+                <div class="col-9">
+                    <ChatMessages SelectedUser="_selectedUser" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     [CascadingParameter(Name = "AuthenticationState")]
     public AuthenticationState AuthenticationState { get; set; }
 
-    protected override void OnInitialized()
+    private HubConnection? _hubConnection;
+
+    public ICollection<UserDto> Users { get; set; } = new HashSet<UserDto>();
+
+    private UserDto? _selectedUser = null;
+
+    protected override async void OnInitialized()
     {
         base.OnInitialized();
         if (!AuthenticationState.IsAuthenticated)
         {
             NavigationManager.NavigateTo("/");
         }
+        else
+        {
+            _hubConnection = ConfigureHubConnection();
+            await _hubConnection.StartAsync();
+            await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.ConnectUser), AuthenticationState.User);
+        }
+    }
+
+    private async Task OnUserSelected(UserDto user) => _selectedUser = user;
+
+    private async Task HandleLogout()
+    {
+        await JsRuntime.InvokeVoidAsync("window.removeFromStorage", AuthenticationState.AuthStoreKey);
+        AuthenticationState.UnLoadState();
+        //NavigationManager.NavigateTo("/");
+    }
+
+    private HubConnection ConfigureHubConnection()
+    {
+        var hubConnection = new HubConnectionBuilder()
+                            .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/blazing-chat"), 
+                               options => options.AccessTokenProvider = () => Task.FromResult(AuthenticationState.Token))
+                            .Build();
+
+        hubConnection.On<UserDto>(nameof(IBlazingChatHubClient.UserConnected), (userName) =>
+        {
+            Users.Add(userName);
+            StateHasChanged();
+        });
+
+        hubConnection.On<ICollection<UserDto>>(nameof(IBlazingChatHubClient.ConnectedUsersList), (userNames) =>
+        {
+            Users = userNames;
+            StateHasChanged();
+        });
+        return hubConnection;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
     }
 }

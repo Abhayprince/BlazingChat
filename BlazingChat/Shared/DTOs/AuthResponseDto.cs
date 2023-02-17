@@ -1,4 +1,4 @@
 ﻿namespace BlazingChat.Shared.DTOs
 {
-    public record AuthResponseDto(string Name, string Token);
+    public record AuthResponseDto(UserDto User, string Token);
 }

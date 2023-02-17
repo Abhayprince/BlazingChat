@@ -1,0 +1,13 @@
+﻿@if (SelectedUser is null)
+{
+    <h2>Please select a user from the connected users list, to start a converstation</h2>
+}
+else
+{
+    <h2>@SelectedUser.Value.Name</h2>
+}
+
+@code {
+    [Parameter]
+    public UserDto? SelectedUser { get; set; }
+}

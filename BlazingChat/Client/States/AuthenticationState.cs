@@ -5,8 +5,12 @@ namespace BlazingChat.Client.States
 {
     public class AuthenticationState : INotifyPropertyChanged
     {
+        public const string AuthStoreKey = "authkey";
+
         public event PropertyChangedEventHandler? PropertyChanged;
-        public string? Name { get; set; }
+        //public int Id { get; set; }
+        //public string? Name { get; set; }
+        public UserDto User { get; set; } = default;
         public string? Token { get; set; }
 
         private bool _isAuthenticated;
@@ -25,13 +29,17 @@ namespace BlazingChat.Client.States
 
         public void LoadState(AuthResponseDto authResponseDto)
         {
-            Name = authResponseDto.Name;
+            //Id = authResponseDto.User.Id;
+            //Name = authResponseDto.User.Name;
+            User= authResponseDto.User;
             Token = authResponseDto.Token;
             IsAuthenticated = true;
         }
         public void UnLoadState()
         {
-            Name = null;
+            //Id = 0;
+            //Name = null;
+            User = default;
             Token = null;
             IsAuthenticated = false;
         }

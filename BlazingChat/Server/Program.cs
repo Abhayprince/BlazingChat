@@ -16,6 +16,22 @@ builder.Services.AddAuthentication(options =>
 }).AddJwtBearer(options =>
 {
     options.TokenValidationParameters = TokenService.GetTokenValidationParameters(builder.Configuration);
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = (context) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/hubs/blazing-chat"))
+            {
+                var jwt = context.Request.Query["access_token"];
+                if (!string.IsNullOrWhiteSpace(jwt))
+                {
+                    context.Token = jwt;
+                }
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddDbContext<ChatContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Chat")));
@@ -48,6 +64,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapControllers();
