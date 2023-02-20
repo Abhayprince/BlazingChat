@@ -7,15 +7,15 @@
 @inject IJSRuntime JsRuntime
 
 <div class="container">
-    <div class="card">
-        <div class="card-header bg-danger text-white">
+    <div class="card br-0 mt-5">
+        <div class="card-header  bg-main br-0 text-white">
             <div class="row">
                 <div class="col">
                     <h2>BlazingChat</h2>
                 </div>
                 <div class="col">
                     <button type="button" class="btn btn-warning float-end" @onclick="HandleLogout">Logout</button>
-                    <label class="float-end me-2 mt-2">Welcome @AuthenticationState.User.Name</label>
+                    <label class="float-end me-2 mt-2 topbar-name">Welcome @AuthenticationState.User.Name</label>
                 </div>
             </div>
         </div>

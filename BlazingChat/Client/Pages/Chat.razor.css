@@ -3,3 +3,7 @@
 {
     height: calc(100vh - 150px);
 }
+.topbar-name {
+    border: 1px solid #5e10d2;
+    padding: 2px 5px;
+}
