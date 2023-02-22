@@ -1,6 +1,9 @@
 ﻿using BlazingChat.Server.Data;
 using BlazingChat.Server.Data.Entities;
+using BlazingChat.Server.Hubs;
+using BlazingChat.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlazingChat.Server.Controllers
@@ -11,11 +14,13 @@ namespace BlazingChat.Server.Controllers
     {
         private readonly ChatContext _chatContext;
         private readonly TokenService _tokenService;
+        private readonly IHubContext<BlazingChatHub, IBlazingChatHubClient> _hubContext;
 
-        public AccountController(ChatContext chatContext, TokenService tokenService)
+        public AccountController(ChatContext chatContext, TokenService tokenService, IHubContext<BlazingChatHub, IBlazingChatHubClient> hubContext)
         {
             _chatContext = chatContext;
             _tokenService = tokenService;
+            _hubContext = hubContext;
         }
 
         [HttpPost("register")]
@@ -40,6 +45,8 @@ namespace BlazingChat.Server.Controllers
 
             await _chatContext.Users.AddAsync(user, cancellationToken);
             await _chatContext.SaveChangesAsync(cancellationToken);
+
+            await _hubContext.Clients.All.UserConnected(new UserDto(user.Id, user.Name));
 
             return Ok(GenerateToken(user));
         }

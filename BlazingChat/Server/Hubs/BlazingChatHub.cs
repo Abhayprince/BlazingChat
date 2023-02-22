@@ -26,7 +26,7 @@ namespace BlazingChat.Server.Hubs
             {
                 _connectedUsers.Add(user.Id, user);
 
-                await Clients.Others.UserConnected(user);
+                //await Clients.Others.UserConnected(user);
             }
         }
     }

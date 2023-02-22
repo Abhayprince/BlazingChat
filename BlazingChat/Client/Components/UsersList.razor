@@ -1,17 +1,33 @@
-﻿
+﻿@using System.Net.Http.Headers
+@inject HttpClient Client
+
+<h3>Users</h3>
 <ul class="list-group list-group-flush">
-    @foreach (var user in Users)
+    @if (Loading)
     {
-        <li class="list-group-item" @onclick="() => HandleUserClick(user)">@user.Name</li>
+        <li class="list-group-item">
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Loading...
+        </li>
+    }
+    else
+    {
+        foreach (var user in Users)
+        {
+            <li class="list-group-item" @onclick="() => HandleUserClick(user)">@user.Id - @user.Name</li>
+        }
     }
 </ul>
 
 @code {
     [Parameter]
-    public IEnumerable<UserDto> Users { get; set; } = Enumerable.Empty<UserDto>();
+    public EventCallback<UserDto> OnUserSelected { get; set; }
 
     [Parameter]
-    public EventCallback<UserDto> OnUserSelected { get; set; }
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public ICollection<UserDto> Users { get; set; } = default!;
 
     private async Task HandleUserClick(UserDto user)
     {
