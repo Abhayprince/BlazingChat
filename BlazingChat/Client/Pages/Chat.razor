@@ -21,12 +21,12 @@
                 </div>
             </div>
         </div>
-        <div class="card-body messages-window">
-            <div class="row">
+        <div class="card-body messages-window bg-light d-flex">
+            <div class="row" style="flex: 1">
                 <div class="col-sm-2 col-3">
                     <ChatsList  OnUserSelected="OnUserSelected" />
                 </div>
-                <div class="col-sm-8 col-6">
+                <div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">
                     <ChatDetails SelectedUser="_selectedUser" />
                 </div>
                 <div class="col-sm-2 col-3">
@@ -63,14 +63,15 @@
             var userListTask = GetClient().GetFromJsonAsync<ICollection<UserDto>>("api/users", JsonConverter.JsonSerializerOptions);
 
             await _hubConnection.StartAsync();
-            await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.ConnectUser), AuthenticationState.User);
-            
+
             var usersList = await userListTask;
             if(usersList is not null)
             {
                 Users = usersList;
             }
             _loadingUsers = false;
+            await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.SetUserOnline), AuthenticationState.User);
+            StateHasChanged();
         }
     }
 
@@ -95,18 +96,35 @@
                             .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/blazing-chat"), 
                                options => options.AccessTokenProvider = () => Task.FromResult(AuthenticationState.Token))
                             .Build();
-        
+
         hubConnection.On<UserDto>(nameof(IBlazingChatHubClient.UserConnected), (newUser) =>
         {
             Users.Add(newUser);
             StateHasChanged();
         });
 
-        hubConnection.On<ICollection<UserDto>>(nameof(IBlazingChatHubClient.ConnectedUsersList), (userNames) =>
+        hubConnection.On<ICollection<UserDto>>(nameof(IBlazingChatHubClient.OnlineUsersList), (onlineUsers) =>
         {
-            //Users = userNames;
+            foreach(var user in Users)
+            {
+                if(onlineUsers.Any(u=> u.Id == user.Id))
+                {
+                    user.IsOnline = true;
+                }
+            }
             StateHasChanged();
         });
+
+        hubConnection.On<int>(nameof(IBlazingChatHubClient.UserIsOnline), (userId) =>
+        {
+            var user = Users.FirstOrDefault(u => u.Id == userId);
+            if(user is not null)
+            {
+                user.IsOnline = true;
+                StateHasChanged();
+            }
+        });
+
         return hubConnection;
     }
 

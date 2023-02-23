@@ -21,7 +21,7 @@ namespace BlazingChat.Server.Controllers
             await _chatContext.Users
                         .AsNoTracking()
                         .Where(u => u.Id != UserId)
-                        .Select(u => new UserDto(u.Id, u.Name))
+                        .Select(u => new UserDto(u.Id, u.Name, false))
                         .ToListAsync();
     }
 }

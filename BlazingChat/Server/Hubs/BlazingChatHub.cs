@@ -7,7 +7,7 @@ namespace BlazingChat.Server.Hubs
     [Authorize]
     public class BlazingChatHub: Hub<IBlazingChatHubClient>, IBlazingChatHubServer
     {
-        private static readonly IDictionary<int, UserDto> _connectedUsers = new Dictionary<int, UserDto>();
+        private static readonly IDictionary<int, UserDto> _onlineUsers = new Dictionary<int, UserDto>();
 
         public BlazingChatHub()
         {
@@ -19,14 +19,13 @@ namespace BlazingChat.Server.Hubs
             return base.OnConnectedAsync();
         }
 
-        public async Task ConnectUser(UserDto user)
+        public async Task SetUserOnline(UserDto user)
         {
-            await Clients.Caller.ConnectedUsersList(_connectedUsers.Values);
-            if (!_connectedUsers.ContainsKey(user.Id))
+            await Clients.Caller.OnlineUsersList(_onlineUsers.Values);
+            if (!_onlineUsers.ContainsKey(user.Id))
             {
-                _connectedUsers.Add(user.Id, user);
-
-                //await Clients.Others.UserConnected(user);
+                _onlineUsers.Add(user.Id, user);
+                await Clients.Others.UserIsOnline(user.Id);
             }
         }
     }

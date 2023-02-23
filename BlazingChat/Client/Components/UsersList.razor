@@ -14,7 +14,10 @@
     {
         foreach (var user in Users)
         {
-            <li class="list-group-item" @onclick="() => HandleUserClick(user)">@user.Id - @user.Name</li>
+            <li class="list-group-item" @onclick="() => HandleUserClick(user)">
+                @user.Id - @user.Name
+                <span class="badge rounded-pill bg-@(user.IsOnline ? "success" : "danger")">.</span>
+            </li>
         }
     }
 </ul>
