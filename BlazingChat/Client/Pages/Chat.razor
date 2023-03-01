@@ -28,7 +28,7 @@
                 </div>
                 @*<div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">*@
                 <div class="col-sm-8 col-6 d-flex px-0" style="background-color: #f4ecff;">
-                    <ChatDetails SelectedUser="_selectedUser" OnCancel="HandleChatDetailsCancel" />
+                    <ChatDetails SelectedUser="_selectedUser" NewIncomingMessage="@_newIncomingMessage" OnCancel="HandleChatDetailsCancel" />
                 </div>
                 <div class="col-sm-2 col-3">
                     <UsersList Loading="_loadingUsers" Users="Users" OnUserSelected="OnUserSelected" />
@@ -49,6 +49,7 @@
     public ICollection<UserDto> Chats { get; set; } = new HashSet<UserDto>();
 
     private UserDto? _selectedUser = null;
+    private string? _newIncomingMessage = null;
 
     protected override async void OnInitialized()
     {
@@ -155,6 +156,25 @@
                 user.IsOnline = true;
                 StateHasChanged();
             }
+        });
+
+        hubConnection.On<int, string>(nameof(IBlazingChatHubClient.MessageRecieved), (fromUserId, message) =>
+        {
+            var fromUser = Users.FirstOrDefault(u => u.Id == fromUserId);
+
+            if(!Chats.Any(c=> c.Id == fromUserId))
+            {
+                Chats.Prepend(fromUser);
+            }
+            else
+            {
+                if(_selectedUser?.Id == fromUserId)
+                {
+                    // Append the message to the messages list
+                    _newIncomingMessage = message;
+                }
+            }
+            StateHasChanged();
         });
 
         return hubConnection;

@@ -1,37 +1,101 @@
-﻿@if (SelectedUser is null)
+﻿@using System.Net.Http.Headers;
+@inject HttpClient Client
+
+@if (SelectedUser is null)
 {
     <h2>Please select a user from the connected users list, to start a converstation</h2>
 }
 else
 {
-    <div class="flex-grow-1">
-    <div class="header d-flex justify-content-between bg-main">
+    <div class="flex-grow-1 d-flex flex-column">
+        <div class="header d-flex justify-content-between bg-main">
             <h2 class="text-white">@SelectedUser.Name</h2>
             <button class="btn btn-danger btn-sm" @onclick="HandleCancelClick">x</button>
-    </div>
-    <div class="messages-list">
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="header d-flex justify-content-between bg-danger">
+                <span class="text-white">@_errorMessage</span>
+                <button class="btn btn-danger btn-sm" @onclick="() => _errorMessage = null">x</button>
+            </div>
+        }
+        <div class="messages-list flex-grow-1">
+            <ul>
+                @foreach(var msg in _messages)
+                {
+                    <li>@msg</li>
+                }
+            </ul>
+        </div>
+        <div class="message-input">
 
-        
-    
+            <EditForm Model="_newMessage" OnValidSubmit="HandleSendMessageSubmit">
+                <div class="">
+                    <div class="input-group">
+                        <InputText @bind-Value="_newMessage" placeholder="Enter message here..." class="form-control" />
+                        <button class="btn btn-success " type="submit">Send</button>
+                    </div>
+                </div>
+            </EditForm>
 
+        </div>
     </div>
-    <div class="message-input"></div>
-</div>
 }
 
 @code {
+    [CascadingParameter(Name = "AuthenticationState")]
+    public AuthenticationState AuthenticationState { get; set; }
+
     [Parameter]
     public UserDto? SelectedUser { get; set; }
 
     [Parameter]
     public EventCallback<bool> OnCancel { get; set; }
 
+    [Parameter]
+    public string? NewIncomingMessage { get; set; }
+
     private IList<string> _messages = new List<string>();
+
+    private string _newMessage = "";
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(NewIncomingMessage))
+        {
+            _messages.Add(NewIncomingMessage);
+            NewIncomingMessage = null;
+        }
+    }
 
     private async Task HandleCancelClick()
     {
         var isUserHasMessages = _messages.Any();
         var shouldRemoveFromChatsList = !isUserHasMessages;
         await OnCancel.InvokeAsync(shouldRemoveFromChatsList);
+    }
+
+    private HttpClient GetClient()
+    {
+        Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AuthenticationState.Token);
+        return Client;
+    }
+
+    private async Task HandleSendMessageSubmit()
+    {
+        if (!string.IsNullOrWhiteSpace(_newMessage))
+        {
+            var sendMessageDto = new MessageSendDto(SelectedUser!.Id, _newMessage);
+            var response = await GetClient().PostAsJsonAsync("api/messages", sendMessageDto, JsonConverter.JsonSerializerOptions);
+            if (response.IsSuccessStatusCode)
+            {
+                _newMessage = "";
+            }
+            else
+            {
+                _errorMessage = "Error sending message";
+            }
+        }
     }
 }
