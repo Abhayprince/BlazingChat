@@ -4,10 +4,34 @@
 }
 else
 {
-    <h2>@SelectedUser.Name</h2>
+    <div class="flex-grow-1">
+    <div class="header d-flex justify-content-between bg-main">
+            <h2 class="text-white">@SelectedUser.Name</h2>
+            <button class="btn btn-danger btn-sm" @onclick="HandleCancelClick">x</button>
+    </div>
+    <div class="messages-list">
+
+        
+    
+
+    </div>
+    <div class="message-input"></div>
+</div>
 }
 
 @code {
     [Parameter]
     public UserDto? SelectedUser { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnCancel { get; set; }
+
+    private IList<string> _messages = new List<string>();
+
+    private async Task HandleCancelClick()
+    {
+        var isUserHasMessages = _messages.Any();
+        var shouldRemoveFromChatsList = !isUserHasMessages;
+        await OnCancel.InvokeAsync(shouldRemoveFromChatsList);
+    }
 }

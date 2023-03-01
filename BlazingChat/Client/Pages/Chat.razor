@@ -17,17 +17,18 @@
                 </div>
                 <div class="col">
                     <button type="button" class="btn btn-warning float-end" @onclick="HandleLogout">Logout</button>
-                    <label class="float-end me-2 mt-2 topbar-name">Welcome @AuthenticationState.User.Name</label>
+                    <label class="float-end me-2 mt-2 topbar-name">Welcome @AuthenticationState?.User?.Name</label>
                 </div>
             </div>
         </div>
         <div class="card-body messages-window bg-light d-flex">
             <div class="row" style="flex: 1">
                 <div class="col-sm-2 col-3">
-                    <ChatsList  OnUserSelected="OnUserSelected" />
+                    <ChatsList Chats="Chats" OnUserSelected="OnUserSelected" />
                 </div>
-                <div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">
-                    <ChatDetails SelectedUser="_selectedUser" />
+                @*<div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">*@
+                <div class="col-sm-8 col-6 d-flex px-0" style="background-color: #f4ecff;">
+                    <ChatDetails SelectedUser="_selectedUser" OnCancel="HandleChatDetailsCancel" />
                 </div>
                 <div class="col-sm-2 col-3">
                     <UsersList Loading="_loadingUsers" Users="Users" OnUserSelected="OnUserSelected" />
@@ -45,6 +46,7 @@
 
     private bool _loadingUsers = false;
     public ICollection<UserDto> Users { get; set; } = new HashSet<UserDto>();
+    public ICollection<UserDto> Chats { get; set; } = new HashSet<UserDto>();
 
     private UserDto? _selectedUser = null;
 
@@ -65,7 +67,7 @@
             await _hubConnection.StartAsync();
 
             var usersList = await userListTask;
-            if(usersList is not null)
+            if (usersList is not null)
             {
                 Users = usersList;
             }
@@ -81,7 +83,37 @@
         return Client;
     }
 
-    private async Task OnUserSelected(UserDto user) => _selectedUser = user;
+    private async Task OnUserSelected(UserDto user)
+    {
+        _selectedUser = user;
+
+        var selectedChatUser = Chats.FirstOrDefault(c => c.IsSelected);
+        if(selectedChatUser is not null)
+        {
+            selectedChatUser.IsSelected = false;
+        }
+
+        var chatUser = Chats.FirstOrDefault(c => c.Id == user.Id);
+        if(chatUser is null)
+        {
+            user.IsSelected = true;
+            Chats.Add(user);
+        }
+        else
+        {
+            chatUser.IsSelected = true;
+        }
+
+    }
+
+    private async Task HandleChatDetailsCancel(bool shouldRemoveFromChatsList)
+    {
+        if (shouldRemoveFromChatsList)
+        {
+            Chats.Remove(_selectedUser);
+        }
+        _selectedUser = null;
+    }
 
     private async Task HandleLogout()
     {
@@ -93,7 +125,7 @@
     private HubConnection ConfigureHubConnection()
     {
         var hubConnection = new HubConnectionBuilder()
-                            .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/blazing-chat"), 
+                            .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/blazing-chat"),
                                options => options.AccessTokenProvider = () => Task.FromResult(AuthenticationState.Token))
                             .Build();
 
@@ -105,9 +137,9 @@
 
         hubConnection.On<ICollection<UserDto>>(nameof(IBlazingChatHubClient.OnlineUsersList), (onlineUsers) =>
         {
-            foreach(var user in Users)
+            foreach (var user in Users)
             {
-                if(onlineUsers.Any(u=> u.Id == user.Id))
+                if (onlineUsers.Any(u => u.Id == user.Id))
                 {
                     user.IsOnline = true;
                 }
@@ -118,7 +150,7 @@
         hubConnection.On<int>(nameof(IBlazingChatHubClient.UserIsOnline), (userId) =>
         {
             var user = Users.FirstOrDefault(u => u.Id == userId);
-            if(user is not null)
+            if (user is not null)
             {
                 user.IsOnline = true;
                 StateHasChanged();
