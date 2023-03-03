@@ -53,19 +53,45 @@ else
     public EventCallback<bool> OnCancel { get; set; }
 
     [Parameter]
-    public string? NewIncomingMessage { get; set; }
+    public EventCallback OnIncomingMessageRecieved { get; set; }
 
-    private IList<string> _messages = new List<string>();
+    [Parameter]
+    public MessageDto? NewIncomingMessage { get; set; }
+
+    private IList<MessageDto> _messages = new List<MessageDto>();
 
     private string _newMessage = "";
     private string? _errorMessage;
+    private int previousSelectedUserId = 0;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrWhiteSpace(NewIncomingMessage))
+        if (NewIncomingMessage is not null)
         {
             _messages.Add(NewIncomingMessage);
-            NewIncomingMessage = null;
+            await OnIncomingMessageRecieved.InvokeAsync();
+        }
+
+        if(SelectedUser is not null && SelectedUser.Id != previousSelectedUserId)
+        {
+            previousSelectedUserId = SelectedUser.Id;
+            await LoadMessagesAsync();
+        }
+    }
+
+    private async Task LoadMessagesAsync()
+    {
+        _messages.Clear();
+        var allMessages = await GetClient().GetFromJsonAsync<IEnumerable<MessageDto>>($"api/messages/{SelectedUser.Id}", JsonConverter.JsonSerializerOptions);
+
+        if (allMessages?.Any() == true)
+        {
+            _messages = allMessages.ToList();
+            _errorMessage = null;
+        }
+        else
+        {
+            _errorMessage = $"There is no message between you and {SelectedUser.Name}";
         }
     }
 
@@ -90,7 +116,10 @@ else
             var response = await GetClient().PostAsJsonAsync("api/messages", sendMessageDto, JsonConverter.JsonSerializerOptions);
             if (response.IsSuccessStatusCode)
             {
+                var messageDto = new MessageDto(SelectedUser!.Id, AuthenticationState.User.Id, _newMessage);
+                _messages.Add(messageDto);
                 _newMessage = "";
+                _errorMessage = null;
             }
             else
             {

@@ -4,6 +4,7 @@ using BlazingChat.Server.Hubs;
 using BlazingChat.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazingChat.Server.Controllers
 {
@@ -45,6 +46,21 @@ namespace BlazingChat.Server.Controllers
             {
                 return StatusCode(500, "Unable to send message");
             }
+        }
+
+        [HttpGet("{otherUserId:int}")]
+        public async Task<IEnumerable<MessageDto>> GetMessages(int otherUserId, CancellationToken cancellationToken)
+        {
+            var messages = await _chatContext.Messages
+                            .AsNoTracking()
+                            .Where(m =>
+                                (m.FromId == otherUserId && m.ToId == UserId)
+                                || (m.ToId == otherUserId && m.FromId == UserId)
+                            )
+                            .Select(m=> new MessageDto(m.ToId, m.FromId, m.Content))
+                            .ToListAsync(cancellationToken);
+
+            return messages;
         }
     }
 }

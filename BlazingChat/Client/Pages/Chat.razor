@@ -28,7 +28,10 @@
                 </div>
                 @*<div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">*@
                 <div class="col-sm-8 col-6 d-flex px-0" style="background-color: #f4ecff;">
-                    <ChatDetails SelectedUser="_selectedUser" NewIncomingMessage="@_newIncomingMessage" OnCancel="HandleChatDetailsCancel" />
+                    <ChatDetails SelectedUser="_selectedUser" 
+                        NewIncomingMessage="@_newIncomingMessage"
+                        OnIncomingMessageRecieved = "()=> _newIncomingMessage = null"
+                        OnCancel="HandleChatDetailsCancel" />
                 </div>
                 <div class="col-sm-2 col-3">
                     <UsersList Loading="_loadingUsers" Users="Users" OnUserSelected="OnUserSelected" />
@@ -46,10 +49,10 @@
 
     private bool _loadingUsers = false;
     public ICollection<UserDto> Users { get; set; } = new HashSet<UserDto>();
-    public ICollection<UserDto> Chats { get; set; } = new HashSet<UserDto>();
+    public IList<UserDto> Chats { get; set; } = new List<UserDto>();
 
     private UserDto? _selectedUser = null;
-    private string? _newIncomingMessage = null;
+    private MessageDto? _newIncomingMessage = null;
 
     protected override async void OnInitialized()
     {
@@ -164,14 +167,14 @@
 
             if(!Chats.Any(c=> c.Id == fromUserId))
             {
-                Chats.Prepend(fromUser);
+                Chats.Insert(0, fromUser!);
             }
             else
             {
                 if(_selectedUser?.Id == fromUserId)
                 {
                     // Append the message to the messages list
-                    _newIncomingMessage = message;
+                    _newIncomingMessage = new MessageDto(_selectedUser.Id, fromUserId, message);
                 }
             }
             StateHasChanged();
