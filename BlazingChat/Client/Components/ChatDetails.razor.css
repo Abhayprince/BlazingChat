@@ -1,0 +1,27 @@
+﻿
+.messages-list {
+    height: calc(100vh - 150px - 115px);
+    overflow-y: auto;
+    background-color: #f4ecff;
+}
+.single-msg {
+    border: 1px solid lightgray;
+    padding: 4px 10px;
+    border-radius: 25px;
+}
+.me {
+    border-bottom-right-radius: 0;
+    background-color: #b7efd5;
+}
+.other {
+    border-bottom-left-radius: 0;
+    background-color: #b9ecf6;
+}
+.msg-dt{
+    font-size: 11px;
+}
+.me .msg-dt{
+    display: block;
+    width: 100%;
+    text-align: right;
+}

@@ -4,8 +4,8 @@
     --main-color: #7952b3;
 }
 
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+html, body, * {
+    font-family: 'Poppins', sans-serif;
 }
 
 h1:focus {

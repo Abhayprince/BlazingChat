@@ -24,10 +24,10 @@
         <div class="card-body messages-window bg-light d-flex">
             <div class="row" style="flex: 1">
                 <div class="col-sm-2 col-3">
-                    <ChatsList Chats="Chats" OnUserSelected="OnUserSelected" />
+                    <ChatsList Loading="_loadingUsers" Chats="Chats" OnUserSelected="OnUserSelected" />
                 </div>
                 @*<div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">*@
-                <div class="col-sm-8 col-6 d-flex px-0" style="background-color: #f4ecff;">
+                <div class="col-sm-8 col-6 d-flex px-0">
                     <ChatDetails SelectedUser="_selectedUser" 
                         NewIncomingMessage="@_newIncomingMessage"
                         OnIncomingMessageRecieved = "()=> _newIncomingMessage = null"
@@ -67,6 +67,7 @@
 
             _loadingUsers = true;
             var userListTask = GetClient().GetFromJsonAsync<ICollection<UserDto>>("api/users", JsonConverter.JsonSerializerOptions);
+            var chatListTask = GetClient().GetFromJsonAsync<IList<UserDto>>("api/users/chats", JsonConverter.JsonSerializerOptions);
 
             await _hubConnection.StartAsync();
 
@@ -74,6 +75,12 @@
             if (usersList is not null)
             {
                 Users = usersList;
+            }
+
+            var chatsList = await chatListTask;
+            if (chatsList is not null)
+            {
+                Chats = chatsList;
             }
             _loadingUsers = false;
             await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.SetUserOnline), AuthenticationState.User);
@@ -161,20 +168,20 @@
             }
         });
 
-        hubConnection.On<int, string>(nameof(IBlazingChatHubClient.MessageRecieved), (fromUserId, message) =>
+        hubConnection.On<MessageDto>(nameof(IBlazingChatHubClient.MessageRecieved), (messageDto) =>
         {
-            var fromUser = Users.FirstOrDefault(u => u.Id == fromUserId);
+            var fromUser = Users.FirstOrDefault(u => u.Id == messageDto.FromUserId);
 
-            if(!Chats.Any(c=> c.Id == fromUserId))
+            if (!Chats.Any(c => c.Id == messageDto.FromUserId))
             {
                 Chats.Insert(0, fromUser!);
             }
             else
             {
-                if(_selectedUser?.Id == fromUserId)
+                if (_selectedUser?.Id == messageDto.FromUserId)
                 {
                     // Append the message to the messages list
-                    _newIncomingMessage = new MessageDto(_selectedUser.Id, fromUserId, message);
+                    _newIncomingMessage = messageDto;
                 }
             }
             StateHasChanged();

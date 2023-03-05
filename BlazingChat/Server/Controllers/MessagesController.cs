@@ -38,8 +38,9 @@ namespace BlazingChat.Server.Controllers
             await _chatContext.Messages.AddAsync(message, cancellationToken);
             if(await _chatContext.SaveChangesAsync(cancellationToken) > 0)
             {
+                var responseMessageDto = new MessageDto(message.ToId, message.FromId, message.Content, message.SentOn);
                 await _hubContext.Clients.User(messageDto.ToUserId.ToString())
-                            .MessageRecieved(base.UserId, messageDto.Message);
+                            .MessageRecieved(responseMessageDto);
                 return Ok();
             }
             else
@@ -57,7 +58,7 @@ namespace BlazingChat.Server.Controllers
                                 (m.FromId == otherUserId && m.ToId == UserId)
                                 || (m.ToId == otherUserId && m.FromId == UserId)
                             )
-                            .Select(m=> new MessageDto(m.ToId, m.FromId, m.Content))
+                            .Select(m=> new MessageDto(m.ToId, m.FromId, m.Content, m.SentOn))
                             .ToListAsync(cancellationToken);
 
             return messages;

@@ -9,7 +9,7 @@ else
 {
     <div class="flex-grow-1 d-flex flex-column">
         <div class="header d-flex justify-content-between bg-main">
-            <h2 class="text-white">@SelectedUser.Name</h2>
+            <h4 class="text-white m-0 p-1">@SelectedUser.Name</h4>
             <button class="btn btn-danger btn-sm" @onclick="HandleCancelClick">x</button>
         </div>
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -19,11 +19,30 @@ else
                 <button class="btn btn-danger btn-sm" @onclick="() => _errorMessage = null">x</button>
             </div>
         }
-        <div class="messages-list flex-grow-1">
-            <ul>
+        <div class="messages-list">
+            <ul style="padding: 5px">
                 @foreach(var msg in _messages)
                 {
-                    <li>@msg</li>
+                    var incoming = msg.ToUserId == CurrentUserId;
+
+                    var cls = $"justify-content-{(incoming ? "start" : "end")}";
+
+                    <li class="d-flex @cls">
+                        <p class="single-msg @(incoming ? "other" : "me")">
+                            @msg.Message 
+                            <br>
+                            <small class="msg-dt">
+                                @if(msg.SentOn.Date == DateTime.Today.Date)
+                                {
+                                    <span>@msg.SentOn.ToShortTimeString()</span>
+                                }
+                                else
+                                {
+                                    <span>@msg.SentOn.ToShortDateString() | @msg.SentOn.ToShortTimeString()</span>
+                                }
+                            </small>
+                        </p>
+                    </li>
                 }
             </ul>
         </div>
@@ -45,6 +64,8 @@ else
 @code {
     [CascadingParameter(Name = "AuthenticationState")]
     public AuthenticationState AuthenticationState { get; set; }
+
+    private int CurrentUserId => AuthenticationState?.User.Id ?? 0;
 
     [Parameter]
     public UserDto? SelectedUser { get; set; }
@@ -116,7 +137,7 @@ else
             var response = await GetClient().PostAsJsonAsync("api/messages", sendMessageDto, JsonConverter.JsonSerializerOptions);
             if (response.IsSuccessStatusCode)
             {
-                var messageDto = new MessageDto(SelectedUser!.Id, AuthenticationState.User.Id, _newMessage);
+                var messageDto = new MessageDto(SelectedUser!.Id, AuthenticationState.User.Id, _newMessage, DateTime.Now);
                 _messages.Add(messageDto);
                 _newMessage = "";
                 _errorMessage = null;
