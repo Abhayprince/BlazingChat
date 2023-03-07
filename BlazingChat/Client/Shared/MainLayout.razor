@@ -11,6 +11,9 @@
 </CascadingValue>
 
 @code {
+    // NOTE: Ideally it should be used a separate service class, register it as singleton service
+    // and then inject it on all the pages an components which need this AuthenticationState
+    //  I have used is as Cascading Parameter to simply show how CascadingParameters work
     public AuthenticationState AuthenticationState { get; set; } = new();
 
     protected async override Task OnInitializedAsync()

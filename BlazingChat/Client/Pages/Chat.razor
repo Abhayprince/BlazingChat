@@ -1,6 +1,7 @@
 ﻿@page "/chat"
 @using Microsoft.AspNetCore.SignalR.Client
 @using System.Net.Http.Headers
+@using System.IdentityModel.Tokens.Jwt;
 @inject HttpClient Client
 
 @implements IAsyncDisposable
@@ -9,8 +10,8 @@
 @inject IJSRuntime JsRuntime
 
 <div class="container-fluid">
-    <div class="card br-0 mt-5">
-        <div class="card-header  bg-main br-0 text-white">
+    <div class="card br-0 mt-1">
+        <div class="card-header bg-main br-0 text-white">
             <div class="row">
                 <div class="col">
                     <h2>BlazingChat</h2>
@@ -54,6 +55,19 @@
     private UserDto? _selectedUser = null;
     private MessageDto? _newIncomingMessage = null;
 
+    private async Task<bool> IsTokenExpiredAsync()
+    {
+        var jwt = new JwtSecurityToken(AuthenticationState.Token);
+        if (jwt.ValidTo <= DateTime.Now)
+        {
+            // Token has expired
+            // Navigate to login page
+            await HandleLogout();
+            return true;
+        }
+        return false;
+    }
+
     protected override async void OnInitialized()
     {
         base.OnInitialized();
@@ -63,28 +77,31 @@
         }
         else
         {
-            _hubConnection = ConfigureHubConnection();
-
-            _loadingUsers = true;
-            var userListTask = GetClient().GetFromJsonAsync<ICollection<UserDto>>("api/users", JsonConverter.JsonSerializerOptions);
-            var chatListTask = GetClient().GetFromJsonAsync<IList<UserDto>>("api/users/chats", JsonConverter.JsonSerializerOptions);
-
-            await _hubConnection.StartAsync();
-
-            var usersList = await userListTask;
-            if (usersList is not null)
+            if (!await IsTokenExpiredAsync())
             {
-                Users = usersList;
-            }
+                _hubConnection = ConfigureHubConnection();
 
-            var chatsList = await chatListTask;
-            if (chatsList is not null)
-            {
-                Chats = chatsList;
+                _loadingUsers = true;
+                var userListTask = GetClient().GetFromJsonAsync<ICollection<UserDto>>("api/users", JsonConverter.JsonSerializerOptions);
+                var chatListTask = GetClient().GetFromJsonAsync<IList<UserDto>>("api/users/chats", JsonConverter.JsonSerializerOptions);
+
+                await _hubConnection.StartAsync();
+
+                var usersList = await userListTask;
+                if (usersList is not null)
+                {
+                    Users = usersList;
+                }
+
+                var chatsList = await chatListTask;
+                if (chatsList is not null)
+                {
+                    Chats = chatsList;
+                }
+                _loadingUsers = false;
+                await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.SetUserOnline), AuthenticationState.User);
+                StateHasChanged();
             }
-            _loadingUsers = false;
-            await _hubConnection.SendAsync(nameof(IBlazingChatHubServer.SetUserOnline), AuthenticationState.User);
-            StateHasChanged();
         }
     }
 

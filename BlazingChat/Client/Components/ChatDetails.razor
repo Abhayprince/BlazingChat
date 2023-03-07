@@ -1,5 +1,6 @@
 ﻿@using System.Net.Http.Headers;
 @inject HttpClient Client
+@inject IJSRuntime JsRuntime
 
 @if (SelectedUser is null)
 {
@@ -12,37 +13,55 @@ else
             <h4 class="text-white m-0 p-1">@SelectedUser.Name</h4>
             <button class="btn btn-danger btn-sm" @onclick="HandleCancelClick">x</button>
         </div>
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <div class="header d-flex justify-content-between bg-danger">
-                <span class="text-white">@_errorMessage</span>
-                <button class="btn btn-danger btn-sm" @onclick="() => _errorMessage = null">x</button>
-            </div>
-        }
+        
         <div class="messages-list">
-            <ul style="padding: 5px">
-                @foreach(var msg in _messages)
+            
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="header d-flex justify-content-between bg-danger">
+                    <span class="text-white">@_errorMessage</span>
+                    <button class="btn btn-danger btn-sm" @onclick="() => _errorMessage = null">x</button>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_infoMessage))
+            {
+                <div class="header d-flex justify-content-between bg-warning">
+                    <span class="text-white">@_infoMessage</span>
+                </div>
+            }
+            <ul id="messages-ul" style="padding: 5px">
+                @if (_loadingMessages)
                 {
-                    var incoming = msg.ToUserId == CurrentUserId;
-
-                    var cls = $"justify-content-{(incoming ? "start" : "end")}";
-
-                    <li class="d-flex @cls">
-                        <p class="single-msg @(incoming ? "other" : "me")">
-                            @msg.Message 
-                            <br>
-                            <small class="msg-dt">
-                                @if(msg.SentOn.Date == DateTime.Today.Date)
-                                {
-                                    <span>@msg.SentOn.ToShortTimeString()</span>
-                                }
-                                else
-                                {
-                                    <span>@msg.SentOn.ToShortDateString() | @msg.SentOn.ToShortTimeString()</span>
-                                }
-                            </small>
-                        </p>
+                    <li class="list-group-item">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        Loading messages...
                     </li>
+                }
+                else
+                {
+                    @foreach (var msg in _messages)
+                    {
+                        var incoming = msg.ToUserId == CurrentUserId;
+
+                        var cls = $"justify-content-{(incoming ? "start" : "end")}";
+
+                        <li class="d-flex @cls">
+                            <p class="single-msg @(incoming ? "other" : "me")">
+                                @msg.Message
+                                <br>
+                                <small class="msg-dt">
+                                    @if (msg.SentOn.Date == DateTime.Today.Date)
+                                    {
+                                        <span>@msg.SentOn.ToShortTimeString()</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@msg.SentOn.ToShortDateString() | @msg.SentOn.ToShortTimeString()</span>
+                                    }
+                                </small>
+                            </p>
+                        </li>
+                    }
                 }
             </ul>
         </div>
@@ -83,7 +102,10 @@ else
 
     private string _newMessage = "";
     private string? _errorMessage;
+    private string? _infoMessage;
     private int previousSelectedUserId = 0;
+    private bool _scrollToBottom = false;
+    private bool _loadingMessages = false;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -91,29 +113,50 @@ else
         {
             _messages.Add(NewIncomingMessage);
             await OnIncomingMessageRecieved.InvokeAsync();
+            _scrollToBottom = true;
         }
 
         if(SelectedUser is not null && SelectedUser.Id != previousSelectedUserId)
         {
             previousSelectedUserId = SelectedUser.Id;
             await LoadMessagesAsync();
+            _scrollToBottom = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollToBottom)
+        {
+            _scrollToBottom = false;
+            await JsRuntime.InvokeVoidAsync("window.scrollToLastMessage");
         }
     }
 
     private async Task LoadMessagesAsync()
     {
-        _messages.Clear();
-        var allMessages = await GetClient().GetFromJsonAsync<IEnumerable<MessageDto>>($"api/messages/{SelectedUser.Id}", JsonConverter.JsonSerializerOptions);
+        try
+        {
+            _loadingMessages = true;
+            _messages.Clear();
+            var allMessages = await GetClient().GetFromJsonAsync<IEnumerable<MessageDto>>($"api/messages/{SelectedUser.Id}", JsonConverter.JsonSerializerOptions);
 
-        if (allMessages?.Any() == true)
-        {
-            _messages = allMessages.ToList();
-            _errorMessage = null;
+            if (allMessages?.Any() == true)
+            {
+                _messages = allMessages.ToList();
+                _errorMessage = null;
+                _infoMessage = null;
+            }
+            else
+            {
+                _infoMessage = $"There is no message between you and {SelectedUser.Name}";
+            }
         }
-        else
+        finally
         {
-            _errorMessage = $"There is no message between you and {SelectedUser.Name}";
+            _loadingMessages = false;
         }
+
     }
 
     private async Task HandleCancelClick()
@@ -139,8 +182,10 @@ else
             {
                 var messageDto = new MessageDto(SelectedUser!.Id, AuthenticationState.User.Id, _newMessage, DateTime.Now);
                 _messages.Add(messageDto);
+                _scrollToBottom = true;
                 _newMessage = "";
                 _errorMessage = null;
+                _infoMessage = null;
             }
             else
             {
