@@ -18,6 +18,7 @@
      ``` 
      
 - Run the migrations - to update the database using following Package Manager Console Command
+    
     `Update-Database`
 
 - Run the solution
