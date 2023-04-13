@@ -24,17 +24,17 @@
         </div>
         <div class="card-body messages-window bg-light d-flex">
             <div class="row" style="flex: 1">
-                <div class="col-sm-2 col-3">
+                <div class="col-sm-3 col-3">
                     <ChatsList Loading="_loadingUsers" Chats="Chats" OnUserSelected="OnUserSelected" />
                 </div>
                 @*<div class="col-sm-8 col-6 d-flex justify-content-center align-items-center" style="background-color: #f4ecff;">*@
-                <div class="col-sm-8 col-6 d-flex px-0">
+                <div class="col-sm-6 col-6 d-flex px-0">
                     <ChatDetails SelectedUser="_selectedUser" 
                         NewIncomingMessage="@_newIncomingMessage"
                         OnIncomingMessageRecieved = "()=> _newIncomingMessage = null"
                         OnCancel="HandleChatDetailsCancel" />
                 </div>
-                <div class="col-sm-2 col-3">
+                <div class="col-sm-3 col-3">
                     <UsersList Loading="_loadingUsers" Users="Users" OnUserSelected="OnUserSelected" />
                 </div>
             </div>
